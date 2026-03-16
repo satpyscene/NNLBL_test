@@ -1,0 +1,8 @@
+Molecule,Band,Wavenumber,Min γD,Max γD,Status
+H2O,Short-wave IR,13000-13500,0.018603107,0.020218506,✓ Valid
+CO2,Short-wave IR,13000-13500,,,No Data
+O3,Short-wave IR,13000-13500,,,No Data
+N2O,Short-wave IR,13000-13500,0.012517208,0.012818032,✓ Valid
+CO,Short-wave IR,13000-13500,,,No Data
+CH4,Short-wave IR,13000-13500,0.02073703,0.021110177,✓ Valid
+O2,Short-wave IR,13000-13500,0.014175495,0.014990057,✓ Valid

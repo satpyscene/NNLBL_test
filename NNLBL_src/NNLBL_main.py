@@ -455,7 +455,7 @@ def NNLBL_main(
         1000.0, WING_SIZE, TOTAL_POINTS_FULL, CONCENTRATION_FACTOR
     )
     base_grid_gpu = torch.tensor(
-        base_wavenumber_grid, dtype=torch.float32, device=DEVICE
+        base_wavenumber_grid, dtype=torch.float64, device=DEVICE
     )
 
     # ---------------------------------------------------
@@ -787,7 +787,7 @@ def NNLBL_main(
             f"L{len(p_data)}_P{p_data[0]:.2f}_T{t_data[0]:.2f}_VMR{vmr_data[0]:.4f}"
         )
         cache_key = (
-            f"{MOLECULE}_{GLOBAL_WN_MIN}_{GLOBAL_WN_MAX}_{iso_tag}_{data_signature}"
+            f"{MOLECULE}_{GLOBAL_WN_MIN}_{GLOBAL_WN_MAX}_{GLOBAL_WN_STEP}_{iso_tag}_{data_signature}"
         )
         cache_hash = hashlib.md5(cache_key.encode()).hexdigest()[:16]
         hapi_cache_path = os.path.join("cache", f"hapi_results_{cache_hash}.pkl")

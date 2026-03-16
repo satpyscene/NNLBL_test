@@ -1,0 +1,22 @@
+name: nnlbl_env  # 你可以把这个名字改成你喜欢的
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.11      # 推荐 3.10 或 3.11，对各种库支持最稳
+  - pytorch          
+  - torchvision
+  - numpy
+  - h5py
+  - netCDF4
+  - tqdm
+  - joblib
+  - matplotlib
+  - scipy            # HAPI 内部计算通常依赖 scipy，建议装上
+  - requests         # HAPI fetch 数据需要联网，通常需要这个
+  - pip
+  # - pip:
+  #   # 这里放 pip 独有的包，或者 HAPI
+  #   # 注意：HAPI 官方没有标准的 pip 包，通常是手动下载 hapi.py
+  #   # 如果你以前是用 pip 安装的某个修改版，可以在这里写，比如:
+  #   # - hapi-py

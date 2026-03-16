@@ -88,8 +88,11 @@ class SimpleNetWithPrePostProcess(nn.Module):
         self.y_std = torch.tensor(y_std, dtype=torch.float32)
 
     def forward_with_full_pipeline(self, gamma_d, gamma_l, S, nu0, delta_0, base_grid):
-        inputs_raw = torch.stack([gamma_d, gamma_l], dim=1)
-        normalized_inputs = (inputs_raw - self.x_mean) / self.x_std
+        # 归一化在 float64 中进行（与 single_level_K_plot 的 numpy float64 归一化一致），
+        # 再转回 float32 送入 NN（权重为 float32）
+        inputs_raw = torch.stack([gamma_d, gamma_l], dim=1).to(torch.float64)
+        normalized_inputs = ((inputs_raw - self.x_mean.to(torch.float64))
+                             / self.x_std.to(torch.float64)).to(torch.float32)
 
         out = self.fc1(normalized_inputs)
         out = self.relu(out)
@@ -101,12 +104,14 @@ class SimpleNetWithPrePostProcess(nn.Module):
         out = self.relu(out)
         predicted_normalized = self.fc5(out)
 
-        y_log_scale = predicted_normalized * self.y_std + self.y_mean
-        y_physical_scale = torch.pow(10.0, y_log_scale)
-        final_profiles = y_physical_scale * S.unsqueeze(1)
+        # 物理还原升精度为 float64，消除 10^x 和 S 乘法的 float32 舍入误差
+        pred_f64 = predicted_normalized.to(torch.float64)
+        y_log_scale = pred_f64 * self.y_std.to(torch.float64) + self.y_mean.to(torch.float64)
+        y_physical_scale = torch.pow(torch.tensor(10.0, dtype=torch.float64, device=pred_f64.device), y_log_scale)
+        final_profiles = y_physical_scale * S.to(torch.float64).unsqueeze(1)
 
-        total_shift = (nu0 + delta_0) - 1000.0
-        final_wavenumber_grids = base_grid.unsqueeze(0) + total_shift.unsqueeze(1)
+        total_shift = (nu0.to(torch.float64) + delta_0.to(torch.float64)) - 1000.0
+        final_wavenumber_grids = base_grid.to(torch.float64).unsqueeze(0) + total_shift.unsqueeze(1)
 
         return final_profiles, final_wavenumber_grids
 
@@ -263,8 +268,10 @@ def get_hapi_physical_params_new(
         }
 
     # 4. 预分配内存
+    # nu0 和 delta_0 必须 float64：非均匀网格中心间距 ~3e-4 cm⁻¹，
+    # float32 精度 ~1e-3 cm⁻¹ 会导致 wn_grid 偏移 ~1-2 个格点，引入大误差
     lines_params = {
-        k: np.zeros(num_total_lines, dtype=np.float32)
+        k: np.zeros(num_total_lines, dtype=np.float64 if k in ("nu0", "delta_0") else np.float32)
         for k in ["gamma_d", "gamma_l", "S", "nu0", "delta_0"]
     }
 
@@ -477,15 +484,15 @@ def perform_superposition_gpu(
     num_lines = final_profiles_gpu.shape[0]
 
     global_grid_gpu = (
-        torch.from_numpy(global_wavenumber_grid).to(device).to(torch.float32)
+        torch.from_numpy(global_wavenumber_grid).to(device).to(torch.float64)
     )
-    base_grid_gpu = torch.from_numpy(base_wavenumber_grid).to(device).to(torch.float32)
+    base_grid_gpu = torch.from_numpy(base_wavenumber_grid).to(device).to(torch.float64)
     absorption_gpu = torch.zeros(
-        len(global_wavenumber_grid), dtype=torch.float32, device=device
+        len(global_wavenumber_grid), dtype=torch.float64, device=device
     )
 
-    final_profiles_gpu = final_profiles_gpu.to(torch.float32)
-    final_wn_grids_gpu = final_wn_grids_gpu.to(torch.float32)
+    final_profiles_gpu = final_profiles_gpu.to(torch.float64)
+    final_wn_grids_gpu = final_wn_grids_gpu.to(torch.float64)
     shifts_gpu = final_wn_grids_gpu[:, 0] - base_grid_gpu[0]
 
     for batch_idx in range((num_lines + batch_size - 1) // batch_size):
@@ -523,8 +530,8 @@ def perform_superposition_gpu(
         y1 = batch_profiles[line_indices, indices - 1]
         y2 = batch_profiles[line_indices, indices]
 
-        weights = (rel_positions - x1) / (x2 - x1 + 1e-10)
-        interpolated = (y1 * (1 - weights) + y2 * weights).to(torch.float32)
+        weights = (rel_positions - x1) / (x2 - x1)
+        interpolated = (y1 * (1 - weights) + y2 * weights)
 
         absorption_gpu.index_add_(0, global_indices, interpolated)
 
