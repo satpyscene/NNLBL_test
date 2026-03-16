@@ -57,7 +57,6 @@ All parameters are defined at the top of `main_test.py`. Key settings:
 |---|---|
 |`HP_MODEL_PATH` / `LP_MODEL_PATH`|High-pressure / low-pressure model weight paths|
 |`HP_STATS_PATH` / `LP_STATS_PATH`|Corresponding normalization statistics paths|
-|`PRESSURE_THRESHOLD_PA`|Threshold for HP/LP model selection (default: 2200 Pa)|
 |`TEST_CASES`|Test conditions (pressure, temperature, molecule, wavenumber range)|
 
 ---
